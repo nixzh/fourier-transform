@@ -1,0 +1,46 @@
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <string>
+#include <math.h>
+
+using namespace std;
+using namespace cv;
+
+int main(int argc, char* argv[])
+{
+	char k[20];
+	cout << "请输入图片路径" << endl;
+	cin.getline(k, 20);
+	Mat img = imread(k, 0);//读取图像
+	if (img.empty())
+	{
+		cout << "error" << endl;
+	}
+	Mat img1(img.rows, img.cols, CV_16SC1);
+	for (int i = 0; i < img.rows; i++)//中心化,f(x,y)=f(x,y)*(-1)^(x+y)
+	{
+		for (int j = 0; j < img.cols; j++)
+		{
+			img1.at<short>(i, j) = img.at<uchar>(i, j) * pow(-1, i + j);
+
+		}
+	}
+	int M = getOptimalDFTSize(img1.rows);
+	int N = getOptimalDFTSize(img1.cols);//获取变换后最佳长度
+	Mat padded;
+	copyMakeBorder(img1, padded, 0, M - img1.rows, 0, N - img1.cols, BORDER_CONSTANT, Scalar::all(0));//幅值数据
+	Mat planes[] = { Mat_<float>(padded), Mat::zeros(padded.size(), CV_32F) };//建立两个通道，通道1位实部，通道2为虚部，虚部置0
+	Mat complexImg;
+	merge(planes, 2, complexImg);//实部、虚部合并
+	dft(complexImg, complexImg);//傅里叶变换
+	split(complexImg, planes);
+	magnitude(planes[0], planes[1], planes[0]);//计算度幅值
+	Mat mag = planes[0];
+	mag += Scalar::all(1);//幅度值+1
+	log(mag, mag);//对数变换
+	normalize(mag, mag, 0, 1, NORM_MINMAX);//归一化
+	imshow("Fourier Spectrum", mag);
+	waitKey();
+	return 0;
+
+}
